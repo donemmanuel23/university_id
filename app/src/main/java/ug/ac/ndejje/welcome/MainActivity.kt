@@ -65,7 +65,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun StudentInfo(student: Student) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // Wrapped Image in a Surface with internal padding to prevent touching edges
         Surface(
             modifier = Modifier
                 .padding(top = 24.dp)
@@ -77,7 +76,7 @@ fun StudentInfo(student: Student) {
                 painter = painterResource(id = student.profileImageId),
                 contentDescription = "Profile Picture",
                 modifier = Modifier
-                    .padding(8.dp) // Internal padding so head/face aren't cut off by edges
+                    .padding(8.dp)
                     .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
@@ -139,9 +138,7 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
+        modifier = Modifier.fillMaxSize()
     ) {
         IconButton(onClick = onBack, modifier = Modifier.padding(8.dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -153,7 +150,6 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Surface with internal padding for the detail view profile picture
             Surface(
                 modifier = Modifier
                     .padding(top = 32.dp)
@@ -165,7 +161,7 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
                     painter = painterResource(id = student.profileImageId),
                     contentDescription = null,
                     modifier = Modifier
-                        .padding(12.dp) // Internal padding to keep head away from the circular edge
+                        .padding(12.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
@@ -230,56 +226,54 @@ fun StudentDirectory() {
         it.name.contains(searchQuery, ignoreCase = true)
     }
 
-    if (selectedStudent != null) {
-        StudentDetailView(
-            student = selectedStudent,
-            onBack = { selectedStudentId = null }
-        )
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-        ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Search Student Name") },
-                placeholder = { Text("Enter name...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search Icon"
+    Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        if (selectedStudent != null) {
+            StudentDetailView(
+                student = selectedStudent,
+                onBack = { selectedStudentId = null }
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Search Student Name") },
+                    placeholder = { Text("Enter name...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Icon"
+                        )
+                    },
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.LightGray,
                     )
-                },
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.LightGray,
                 )
-            )
 
-            Text(
-                text = "Total Students Found: ${filteredStudents.size}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
-            )
+                Text(
+                    text = "Total Students Found: ${filteredStudents.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
+                )
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-            ) {
-                items(filteredStudents) { student ->
-                    StudentIdCard(
-                        student = student,
-                        onViewProfile = { selectedStudentId = student.id }
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    items(filteredStudents) { student ->
+                        StudentIdCard(
+                            student = student,
+                            onViewProfile = { selectedStudentId = student.id }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                 }
             }
         }
