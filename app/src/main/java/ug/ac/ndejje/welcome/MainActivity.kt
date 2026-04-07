@@ -6,15 +6,17 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -23,18 +25,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +53,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ug.ac.ndejje.welcome.ui.theme.StudentsAppTheme
@@ -135,29 +145,39 @@ fun StudentIdCard(student: Student, onViewProfile: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentDetailView(student: Student, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val scrollState = rememberScrollState()
     
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        IconButton(onClick = onBack, modifier = Modifier.padding(8.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Student Profile", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent
+                )
+            )
         }
-        
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .padding(paddingValues)
                 .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
                 modifier = Modifier
-                    .padding(top = 32.dp)
+                    .padding(top = 16.dp)
                     .size(160.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceVariant
@@ -177,7 +197,8 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
             Text(
                 text = student.name,
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
             
             Text(
@@ -186,37 +207,89 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
                 style = MaterialTheme.typography.labelLarge
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
-            DetailItem(label = "Registration Number", value = student.regNumber)
-            DetailItem(label = "Programme", value = student.programme)
-            DetailItem(label = "Student ID", value = student.id.toString())
+            DetailItem(
+                label = "Registration Number", 
+                value = student.regNumber,
+                icon = Icons.Default.Person
+            )
+            DetailItem(
+                label = "Programme of Study", 
+                value = student.programme,
+                icon = Icons.Default.Info
+            )
+            DetailItem(
+                label = "System ID", 
+                value = "#${student.id}",
+                icon = Icons.Default.Info
+            )
         }
-
     }
 }
 
 @Composable
-fun DetailItem(label: String, value: String) {
-    Column(
+fun DetailItem(label: String, value: String, icon: ImageVector) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium
-        )
-        HorizontalDivider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp)
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp)
+        }
     }
 }
 
+@Composable
+fun EmptySearchResults() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = Color.LightGray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No Students Found",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.Gray
+        )
+        Text(
+            text = "Try searching with a different name.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.LightGray,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentDirectory() {
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -232,23 +305,33 @@ fun StudentDirectory() {
         it.name.contains(searchQuery, ignoreCase = true)
     }
 
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-        if (selectedStudent != null) {
-            StudentDetailView(
-                student = selectedStudent,
-                onBack = { selectedStudentId = null }
-            )
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
+    if (selectedStudent != null) {
+        StudentDetailView(
+            student = selectedStudent,
+            onBack = { selectedStudentId = null }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Student Directory", fontWeight = FontWeight.Bold) }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search Student Name") },
-                    placeholder = { Text("Enter name...") },
+                    label = { Text("Search by Name") },
+                    placeholder = { Text("Enter student name...") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search Icon"
+                            contentDescription = null
                         )
                     },
                     shape = RoundedCornerShape(28.dp),
@@ -263,22 +346,26 @@ fun StudentDirectory() {
                 )
 
                 Text(
-                    text = "Total Students Found: ${filteredStudents.size}",
+                    text = "Showing ${filteredStudents.size} students",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
                 )
 
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                ) {
-                    items(filteredStudents) { student ->
-                        StudentIdCard(
-                            student = student,
-                            onViewProfile = { selectedStudentId = student.id }
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
+                if (filteredStudents.isEmpty()) {
+                    EmptySearchResults()
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    ) {
+                        items(filteredStudents) { student ->
+                            StudentIdCard(
+                                student = student,
+                                onViewProfile = { selectedStudentId = student.id }
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
                     }
                 }
             }
@@ -290,7 +377,6 @@ fun StudentDirectory() {
 @Composable
 fun WelcomePreview() {
     StudentsAppTheme {
-
         StudentDirectory()
     }
 }
