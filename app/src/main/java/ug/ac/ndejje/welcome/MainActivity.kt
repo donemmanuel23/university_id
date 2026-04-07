@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,7 +26,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -33,6 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -294,15 +298,31 @@ fun EmptySearchResults() {
 fun StudentDirectory() {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedStudentId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var selectedProgramme by rememberSaveable { mutableStateOf("All") }
+    var isSortedAscending by rememberSaveable { mutableStateOf(true) }
     
     val allStudents = StudentProvider.studentList
-    
+    val programmes = listOf("All", "BIT", "BCS", "BSE")
+
     val selectedStudent: Student? = remember(selectedStudentId) {
         allStudents.find { it.id == selectedStudentId }
     }
     
-    val filteredStudents = allStudents.filter {
-        it.name.contains(searchQuery, ignoreCase = true)
+    // Apply Filtering and Sorting logic
+    val filteredStudents = remember(searchQuery, selectedProgramme, isSortedAscending) {
+        var list = allStudents.filter {
+            it.name.contains(searchQuery, ignoreCase = true)
+        }
+        
+        if (selectedProgramme != "All") {
+            list = list.filter { it.programme == selectedProgramme }
+        }
+        
+        if (isSortedAscending) {
+            list.sortedBy { it.name }
+        } else {
+            list.sortedByDescending { it.name }
+        }
     }
 
     if (selectedStudent != null) {
@@ -314,7 +334,16 @@ fun StudentDirectory() {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Student Directory", fontWeight = FontWeight.Bold) }
+                    title = { Text("Student Directory", fontWeight = FontWeight.Bold) },
+                    actions = {
+                        IconButton(onClick = { isSortedAscending = !isSortedAscending }) {
+                            Icon(
+                                imageVector = Icons.Default.List,
+                                contentDescription = "Sort",
+                                tint = if (isSortedAscending) MaterialTheme.colorScheme.primary else Color.Gray
+                            )
+                        }
+                    }
                 )
             }
         ) { paddingValues ->
@@ -323,27 +352,41 @@ fun StudentDirectory() {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
+                // Search Field
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     label = { Text("Search by Name") },
                     placeholder = { Text("Enter student name...") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null
-                        )
-                    },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     shape = RoundedCornerShape(28.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = Color.LightGray,
                     )
                 )
+
+                // Programme Filter Chips
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    items(programmes) { prog ->
+                        FilterChip(
+                            selected = selectedProgramme == prog,
+                            onClick = { selectedProgramme = prog },
+                            label = { Text(prog) },
+                            leadingIcon = if (selectedProgramme == prog) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null
+                        )
+                    }
+                }
 
                 Text(
                     text = "Showing ${filteredStudents.size} students",
