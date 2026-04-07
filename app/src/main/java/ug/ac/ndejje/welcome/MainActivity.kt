@@ -6,7 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
@@ -36,11 +41,13 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,9 +57,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -69,6 +79,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import ug.ac.ndejje.welcome.ui.theme.StudentsAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -103,7 +114,6 @@ fun StudentInfo(student: Student) {
                     contentScale = ContentScale.Crop
                 )
             }
-            // Verified Badge Overlay
             if (student.isVerified) {
                 Surface(
                     modifier = Modifier
@@ -138,11 +148,20 @@ fun StudentInfo(student: Student) {
 }
 
 @Composable
-fun StudentIdCard(student: Student, onViewProfile: () -> Unit) {
+fun StudentIdCard(
+    student: Student,
+    onViewProfile: () -> Unit,
+    onDelete: () -> Unit
+) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { onDelete() }
+                )
+            },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -162,6 +181,61 @@ fun StudentIdCard(student: Student, onViewProfile: () -> Unit) {
                 modifier = Modifier.height(32.dp)
             ) {
                 Text("View Profile", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddStudentDialog(
+    onDismiss: () -> Unit,
+    onAdd: (String, String, String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var regNo by remember { mutableStateOf("") }
+    var programme by remember { mutableStateOf("BIT") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Add New Student", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") })
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = regNo, onValueChange = { regNo = it }, label = { Text("Reg Number") })
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Programme", style = MaterialTheme.typography.labelMedium, modifier = Modifier.align(Alignment.Start))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    listOf("BIT", "BCS", "BSE").forEach { prog ->
+                        FilterChip(
+                            selected = programme == prog,
+                            onClick = { programme = prog },
+                            label = { Text(prog) }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(
+                        onClick = { onAdd(name, regNo, programme); onDismiss() },
+                        enabled = name.isNotBlank() && regNo.isNotBlank()
+                    ) { Text("Add") }
+                }
             }
         }
     }
@@ -331,16 +405,23 @@ fun StudentDirectory() {
     var selectedStudentId by rememberSaveable { mutableStateOf<Int?>(null) }
     var selectedProgramme by rememberSaveable { mutableStateOf("All") }
     var isSortedAscending by rememberSaveable { mutableStateOf(true) }
-    
-    val allStudents = StudentProvider.studentList
-    val programmes = listOf("All", "BIT", "BCS", "BSE")
+    var showAddDialog by remember { mutableStateOf(false) }
 
-    val selectedStudent: Student? = remember(selectedStudentId) {
-        allStudents.find { it.id == selectedStudentId }
+    // Use a state-aware list to allow dynamic updates
+    val studentList = remember { 
+        mutableStateListOf<Student>().apply { 
+            addAll(StudentProvider.studentList) 
+        } 
     }
     
-    val filteredStudents = remember(searchQuery, selectedProgramme, isSortedAscending) {
-        var list = allStudents.filter {
+    val programmes = listOf("All", "BIT", "BCS", "BSE")
+
+    val selectedStudent: Student? = remember(selectedStudentId, studentList.size) {
+        studentList.find { it.id == selectedStudentId }
+    }
+    
+    val filteredStudents = remember(searchQuery, selectedProgramme, isSortedAscending, studentList.size) {
+        var list = studentList.filter {
             it.name.contains(searchQuery, ignoreCase = true) || 
             it.regNumber.contains(searchQuery, ignoreCase = true)
         }
@@ -376,6 +457,11 @@ fun StudentDirectory() {
                         }
                     }
                 )
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Student")
+                }
             }
         ) { paddingValues ->
             Column(
@@ -425,7 +511,7 @@ fun StudentDirectory() {
                 }
 
                 Text(
-                    text = "Showing ${filteredStudents.size} students",
+                    text = "Showing ${filteredStudents.size} students (Long-press to delete)",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
@@ -438,17 +524,40 @@ fun StudentDirectory() {
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
                     ) {
-                        items(filteredStudents) { student ->
-                            StudentIdCard(
-                                student = student,
-                                onViewProfile = { selectedStudentId = student.id }
-                            )
+                        items(filteredStudents, key = { it.id }) { student ->
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn() + slideInVertically()
+                            ) {
+                                StudentIdCard(
+                                    student = student,
+                                    onViewProfile = { selectedStudentId = student.id },
+                                    onDelete = { studentList.remove(student) }
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showAddDialog) {
+        AddStudentDialog(
+            onDismiss = { showAddDialog = false },
+            onAdd = { name, reg, prog ->
+                val newId = (studentList.maxOfOrNull { it.id } ?: 0) + 1
+                studentList.add(Student(
+                    id = newId,
+                    name = name,
+                    regNumber = reg,
+                    programme = prog,
+                    profileImageId = android.R.drawable.ic_menu_gallery, // Default icon
+                    isVerified = false
+                ))
+            }
+        )
     }
 }
 
