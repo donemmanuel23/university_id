@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -136,6 +138,7 @@ fun StudentIdCard(student: Student, onViewProfile: () -> Unit) {
 @Composable
 fun StudentDetailView(student: Student, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
+    val scrollState = rememberScrollState()
     
     Column(
         modifier = Modifier.fillMaxSize()
@@ -147,7 +150,9 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
@@ -187,6 +192,7 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
             DetailItem(label = "Programme", value = student.programme)
             DetailItem(label = "Student ID", value = student.id.toString())
         }
+
     }
 }
 
@@ -284,7 +290,7 @@ fun StudentDirectory() {
 @Composable
 fun WelcomePreview() {
     StudentsAppTheme {
-        val sampleStudent = StudentProvider.studentList[0]
-        StudentIdCard(student = sampleStudent, onViewProfile = {})
+
+        StudentDirectory()
     }
 }
