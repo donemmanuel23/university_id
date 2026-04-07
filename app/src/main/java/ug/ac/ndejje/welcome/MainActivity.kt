@@ -1,5 +1,6 @@
 package ug.ac.ndejje.welcome
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -7,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,11 +28,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -59,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,21 +86,41 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun StudentInfo(student: Student) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            modifier = Modifier
-                .padding(top = 24.dp)
-                .size(100.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Image(
-                painter = painterResource(id = student.profileImageId),
-                contentDescription = "Profile Picture",
+        Box {
+            Surface(
                 modifier = Modifier
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .padding(top = 24.dp)
+                    .size(100.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Image(
+                    painter = painterResource(id = student.profileImageId),
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            // Verified Badge Overlay
+            if (student.isVerified) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(24.dp),
+                    shape = CircleShape,
+                    color = Color(0xFF4CAF50),
+                    tonalElevation = 4.dp
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Verified",
+                        tint = Color.White,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
+            }
         }
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -109,13 +134,6 @@ fun StudentInfo(student: Student) {
             color = Color.Gray,
             style = MaterialTheme.typography.bodySmall
         )
-        if (student.isVerified) {
-            Text(
-                "Verified Student",
-                color = Color(0xFF4CAF50),
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
     }
 }
 
@@ -154,6 +172,7 @@ fun StudentIdCard(student: Student, onViewProfile: () -> Unit) {
 fun StudentDetailView(student: Student, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
     
     Scaffold(
         topBar = {
@@ -162,6 +181,18 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Student Details:\nName: ${student.name}\nReg No: ${student.regNumber}\nProgramme: ${student.programme}")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Student Details"))
+                    }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share")
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -285,7 +316,7 @@ fun EmptySearchResults() {
             color = Color.Gray
         )
         Text(
-            text = "Try searching with a different name.",
+            text = "Try searching with a different name or ID.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.LightGray,
             textAlign = TextAlign.Center
@@ -308,10 +339,10 @@ fun StudentDirectory() {
         allStudents.find { it.id == selectedStudentId }
     }
     
-    // Apply Filtering and Sorting logic
     val filteredStudents = remember(searchQuery, selectedProgramme, isSortedAscending) {
         var list = allStudents.filter {
-            it.name.contains(searchQuery, ignoreCase = true)
+            it.name.contains(searchQuery, ignoreCase = true) || 
+            it.regNumber.contains(searchQuery, ignoreCase = true)
         }
         
         if (selectedProgramme != "All") {
@@ -338,7 +369,7 @@ fun StudentDirectory() {
                     actions = {
                         IconButton(onClick = { isSortedAscending = !isSortedAscending }) {
                             Icon(
-                                imageVector = Icons.Default.List,
+                                imageVector = Icons.AutoMirrored.Filled.List,
                                 contentDescription = "Sort",
                                 tint = if (isSortedAscending) MaterialTheme.colorScheme.primary else Color.Gray
                             )
@@ -352,13 +383,19 @@ fun StudentDirectory() {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Search Field
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search by Name") },
-                    placeholder = { Text("Enter student name...") },
+                    label = { Text("Search Name or ID") },
+                    placeholder = { Text("Enter name or reg number...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            }
+                        }
+                    },
                     shape = RoundedCornerShape(28.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -370,7 +407,6 @@ fun StudentDirectory() {
                     )
                 )
 
-                // Programme Filter Chips
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
