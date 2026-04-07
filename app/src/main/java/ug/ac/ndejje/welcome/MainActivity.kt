@@ -1,28 +1,22 @@
 package ug.ac.ndejje.welcome
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -33,39 +27,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import ug.ac.ndejje.welcome.ui.theme.StudentsAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -95,24 +61,40 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun StudentPhoto(student: Student, size: androidx.compose.ui.unit.Dp) {
+    if (student.profileImageUri != null) {
+        AsyncImage(
+            model = student.profileImageUri,
+            contentDescription = "Profile Picture",
+            modifier = Modifier
+                .size(size)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Image(
+            painter = painterResource(id = student.profileImageId ?: android.R.drawable.ic_menu_gallery),
+            contentDescription = "Profile Picture",
+            modifier = Modifier
+                .size(size)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+    }
+}
+
+@Composable
 fun StudentInfo(student: Student) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box {
+        Box(modifier = Modifier.padding(top = 24.dp)) {
             Surface(
-                modifier = Modifier
-                    .padding(top = 24.dp)
-                    .size(100.dp),
+                modifier = Modifier.size(100.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
-                Image(
-                    painter = painterResource(id = student.profileImageId),
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                Box(modifier = Modifier.padding(8.dp)) {
+                    StudentPhoto(student, 84.dp)
+                }
             }
             if (student.isVerified) {
                 Surface(
@@ -135,15 +117,8 @@ fun StudentInfo(student: Student) {
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        Text(
-            text = student.name,
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-            text = student.regNumber,
-            color = Color.Gray,
-            style = MaterialTheme.typography.bodySmall
-        )
+        Text(text = student.name, style = MaterialTheme.typography.titleMedium)
+        Text(text = student.regNumber, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -158,9 +133,7 @@ fun StudentIdCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = { onDelete() }
-                )
+                detectTapGestures(onLongPress = { onDelete() })
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
@@ -190,31 +163,72 @@ fun StudentIdCard(
 @Composable
 fun AddStudentDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, String, String) -> Unit
+    onAdd: (String, String, String, Uri?) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var regNo by remember { mutableStateOf("") }
     var programme by remember { mutableStateOf("BIT") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imageUri = uri
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             Column(
                 modifier = Modifier
                     .padding(16.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Add New Student", style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") })
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { photoLauncher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageUri != null) {
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                            Text("Photo", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = regNo, onValueChange = { regNo = it }, label = { Text("Reg Number") })
+                OutlinedTextField(
+                    value = regNo,
+                    onValueChange = { regNo = it },
+                    label = { Text("Reg Number") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Text("Programme", style = MaterialTheme.typography.labelMedium, modifier = Modifier.align(Alignment.Start))
@@ -232,7 +246,7 @@ fun AddStudentDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Button(
-                        onClick = { onAdd(name, regNo, programme); onDismiss() },
+                        onClick = { onAdd(name, regNo, programme, imageUri); onDismiss() },
                         enabled = name.isNotBlank() && regNo.isNotBlank()
                     ) { Text("Add") }
                 }
@@ -268,10 +282,7 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
                     }) {
                         Icon(Icons.Default.Share, contentDescription = "Share")
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                }
             )
         }
     ) { paddingValues ->
@@ -285,31 +296,32 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .size(160.dp),
+                modifier = Modifier.padding(top = 16.dp).size(160.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
-                Image(
-                    painter = painterResource(id = student.profileImageId),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                Box(modifier = Modifier.padding(12.dp)) {
+                    if (student.profileImageUri != null) {
+                        AsyncImage(
+                            model = student.profileImageUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = student.profileImageId ?: android.R.drawable.ic_menu_gallery),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            Text(
-                text = student.name,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            
+            Text(text = student.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(
                 text = if (student.isVerified) "Verified Student" else "Unverified",
                 color = if (student.isVerified) Color(0xFF4CAF50) else Color.Red,
@@ -317,22 +329,9 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
             )
             
             Spacer(modifier = Modifier.height(32.dp))
-            
-            DetailItem(
-                label = "Registration Number", 
-                value = student.regNumber,
-                icon = Icons.Default.Person
-            )
-            DetailItem(
-                label = "Programme of Study", 
-                value = student.programme,
-                icon = Icons.Default.Info
-            )
-            DetailItem(
-                label = "System ID", 
-                value = "#${student.id}",
-                icon = Icons.Default.Info
-            )
+            DetailItem(label = "Registration Number", value = student.regNumber, icon = Icons.Default.Person)
+            DetailItem(label = "Programme of Study", value = student.programme, icon = Icons.Default.Info)
+            DetailItem(label = "System ID", value = "#${student.id}", icon = Icons.Default.Info)
         }
     }
 }
@@ -340,29 +339,14 @@ fun StudentDetailView(student: Student, onBack: () -> Unit) {
 @Composable
 fun DetailItem(label: String, value: String, icon: ImageVector) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
+        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp)
         }
     }
@@ -371,30 +355,14 @@ fun DetailItem(label: String, value: String, icon: ImageVector) {
 @Composable
 fun EmptySearchResults() {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = Color.LightGray
-        )
+        Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(80.dp), tint = Color.LightGray)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "No Students Found",
-            style = MaterialTheme.typography.headlineSmall,
-            color = Color.Gray
-        )
-        Text(
-            text = "Try searching with a different name or ID.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.LightGray,
-            textAlign = TextAlign.Center
-        )
+        Text(text = "No Students Found", style = MaterialTheme.typography.headlineSmall, color = Color.Gray)
+        Text(text = "Try searching with a different name or ID.", style = MaterialTheme.typography.bodyMedium, color = Color.LightGray, textAlign = TextAlign.Center)
     }
 }
 
@@ -407,41 +375,23 @@ fun StudentDirectory() {
     var isSortedAscending by rememberSaveable { mutableStateOf(true) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // Use a state-aware list to allow dynamic updates
-    val studentList = remember { 
-        mutableStateListOf<Student>().apply { 
-            addAll(StudentProvider.studentList) 
-        } 
-    }
-    
+    val studentList = remember { mutableStateListOf<Student>().apply { addAll(StudentProvider.studentList) } }
     val programmes = listOf("All", "BIT", "BCS", "BSE")
 
-    val selectedStudent: Student? = remember(selectedStudentId, studentList.size) {
+    val selectedStudent = remember(selectedStudentId, studentList.size) {
         studentList.find { it.id == selectedStudentId }
     }
     
     val filteredStudents = remember(searchQuery, selectedProgramme, isSortedAscending, studentList.size) {
         var list = studentList.filter {
-            it.name.contains(searchQuery, ignoreCase = true) || 
-            it.regNumber.contains(searchQuery, ignoreCase = true)
+            it.name.contains(searchQuery, ignoreCase = true) || it.regNumber.contains(searchQuery, ignoreCase = true)
         }
-        
-        if (selectedProgramme != "All") {
-            list = list.filter { it.programme == selectedProgramme }
-        }
-        
-        if (isSortedAscending) {
-            list.sortedBy { it.name }
-        } else {
-            list.sortedByDescending { it.name }
-        }
+        if (selectedProgramme != "All") list = list.filter { it.programme == selectedProgramme }
+        if (isSortedAscending) list.sortedBy { it.name } else list.sortedByDescending { it.name }
     }
 
     if (selectedStudent != null) {
-        StudentDetailView(
-            student = selectedStudent,
-            onBack = { selectedStudentId = null }
-        )
+        StudentDetailView(student = selectedStudent, onBack = { selectedStudentId = null })
     } else {
         Scaffold(
             topBar = {
@@ -449,11 +399,7 @@ fun StudentDirectory() {
                     title = { Text("Student Directory", fontWeight = FontWeight.Bold) },
                     actions = {
                         IconButton(onClick = { isSortedAscending = !isSortedAscending }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.List,
-                                contentDescription = "Sort",
-                                tint = if (isSortedAscending) MaterialTheme.colorScheme.primary else Color.Gray
-                            )
+                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Sort", tint = if (isSortedAscending) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
                     }
                 )
@@ -464,11 +410,7 @@ fun StudentDirectory() {
                 }
             }
         ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -483,14 +425,9 @@ fun StudentDirectory() {
                         }
                     },
                     shape = RoundedCornerShape(28.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.LightGray,
-                    )
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = Color.LightGray)
                 )
 
                 LazyRow(
@@ -510,25 +447,14 @@ fun StudentDirectory() {
                     }
                 }
 
-                Text(
-                    text = "Showing ${filteredStudents.size} students (Long-press to delete)",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
-                )
+                Text(text = "Showing ${filteredStudents.size} students (Long-press to delete)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp) )
 
                 if (filteredStudents.isEmpty()) {
                     EmptySearchResults()
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                    ) {
+                    LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
                         items(filteredStudents, key = { it.id }) { student ->
-                            AnimatedVisibility(
-                                visible = true,
-                                enter = fadeIn() + slideInVertically()
-                            ) {
+                            AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically()) {
                                 StudentIdCard(
                                     student = student,
                                     onViewProfile = { selectedStudentId = student.id },
@@ -546,16 +472,9 @@ fun StudentDirectory() {
     if (showAddDialog) {
         AddStudentDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { name, reg, prog ->
+            onAdd = { name, reg, prog, uri ->
                 val newId = (studentList.maxOfOrNull { it.id } ?: 0) + 1
-                studentList.add(Student(
-                    id = newId,
-                    name = name,
-                    regNumber = reg,
-                    programme = prog,
-                    profileImageId = android.R.drawable.ic_menu_gallery, // Default icon
-                    isVerified = false
-                ))
+                studentList.add(Student(id = newId, name = name, regNumber = reg, programme = prog, profileImageUri = uri, isVerified = false))
             }
         )
     }
@@ -564,7 +483,5 @@ fun StudentDirectory() {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun WelcomePreview() {
-    StudentsAppTheme {
-        StudentDirectory()
-    }
+    StudentsAppTheme { StudentDirectory() }
 }
